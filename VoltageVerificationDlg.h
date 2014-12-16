@@ -53,4 +53,6 @@ public:
 	void clearVoltageData();
 	afx_msg void OnBnClickedsetmodbusaddrbutton();
 	afx_msg void OnBnClickedsetbaudbutton();
+	CEdit m_addrLineEdit;
+	CEdit m_BaudLineEdit;
 };

@@ -61,6 +61,8 @@ void CVoltageVerificationDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, serialBtlComb, m_serialBtlComb);
 	DDX_Control(pDX, openSerialButton, m_openSerialButton);
 	DDX_Control(pDX, closeSerialButton, m_closeSerialButton);
+	DDX_Control(pDX, addrLineEdit, m_addrLineEdit);
+	DDX_Control(pDX, moduleBtlLineEdit, m_BaudLineEdit);
 }
 
 BEGIN_MESSAGE_MAP(CVoltageVerificationDlg, CDialogEx)
@@ -424,7 +426,7 @@ void CVoltageVerificationDlg::OnBnClickedsetmodbusaddrbutton()
 	memcpy(czData, &iCommand, 2);
 
 	CString value;
-	GetDlgItem(addrLineEdit)->GetWindowTextW(value);
+	m_addrLineEdit.GetWindowTextW(value);
 	unsigned short iValue = (unsigned short)_tstoi(value);
 	memcpy(czDataValue, &iValue, 2);
 
