@@ -68,6 +68,11 @@ BEGIN_MESSAGE_MAP(CVoltageVerificationDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(openSerialButton, &CVoltageVerificationDlg::OnBnClickedopenserialbutton)
+	ON_BN_CLICKED(closeSerialButton, &CVoltageVerificationDlg::OnBnClickedcloseserialbutton)
+	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_BUTTON2, &CVoltageVerificationDlg::OnBnClickedStartVerify)
+	ON_BN_CLICKED(setModbusAddrButton, &CVoltageVerificationDlg::OnBnClickedsetmodbusaddrbutton)
+	ON_BN_CLICKED(setBaudButton, &CVoltageVerificationDlg::OnBnClickedsetbaudbutton)
 END_MESSAGE_MAP()
 
 
@@ -167,22 +172,6 @@ HCURSOR CVoltageVerificationDlg::OnQueryDragIcon()
 }
 
 
-
-void CVoltageVerificationDlg::OnBnClickedopenserialbutton()
-{
-	// TODO: Add your control notification handler code here
-	int nPort = (int)m_serialPortComb.GetItemData(m_serialPortComb.GetCurSel());
-	int nBaud = (int)m_serialBtlComb.GetItemData(m_serialBtlComb.GetCurSel());
-
-	m_serial = new CSerial();
-	if (m_serial->Open(nPort, nBaud))
-	{
-		pModbus = new CModbusSerial(m_serial);
-
-	}
-}
-
-
 void CVoltageVerificationDlg::initView()
 {
 
@@ -194,14 +183,333 @@ void CVoltageVerificationDlg::initView()
 		m_serialPortComb.InsertString(i, portName);
 		m_serialPortComb.SetItemData(i, (DWORD)i);
 	}
-	m_serialPortComb.SetCurSel(6);
+	m_serialPortComb.SetCurSel(5);
 
 	// 波特率
-	m_serialBtlComb.InsertString(0,_T("9600"));
+	m_serialBtlComb.InsertString(0, _T("9600"));
 	m_serialBtlComb.SetItemData(0, (DWORD)9600);
-	m_serialBtlComb.InsertString(1, _T("115200"));
-	m_serialBtlComb.SetItemData(1, (DWORD)115200);
+	m_serialBtlComb.InsertString(1, _T("19200"));
+	m_serialBtlComb.SetItemData(1, (DWORD)19200);
+	m_serialBtlComb.InsertString(2, _T("115200"));
+	m_serialBtlComb.SetItemData(2, (DWORD)115200);
 
 	m_serialBtlComb.SetCurSel(0);
 
+	m_closeSerialButton.EnableWindow(false);
+
+}
+
+void CVoltageVerificationDlg::OnBnClickedopenserialbutton()
+{
+	// TODO: Add your control notification handler code here
+	int nPort = (int)m_serialPortComb.GetItemData(m_serialPortComb.GetCurSel());
+	int nBaud = (int)m_serialBtlComb.GetItemData(m_serialBtlComb.GetCurSel());
+
+	m_serial = new CSerial();
+	if (m_serial->Open(nPort, nBaud))
+	{
+		pModbus = new CModbusSerial(m_serial);
+		m_openSerialButton.EnableWindow(false);
+		m_closeSerialButton.EnableWindow(true);
+		MessageBox(_T("串口打开"), _T("提示信息"),
+			MB_ICONQUESTION | MB_OK);
+
+		OnBnClickedreadmoduleinfobutton();
+
+		SetTimer(1, 500, NULL);
+
+	}
+}
+
+
+void CVoltageVerificationDlg::OnBnClickedcloseserialbutton()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	if (m_serial)
+		if (m_serial->IsOpened())
+		{
+			if (m_serial->Close())
+			{
+				KillTimer(1);
+
+				m_openSerialButton.EnableWindow(true);
+				m_closeSerialButton.EnableWindow(false);
+				MessageBox(_T("串口关闭"), _T("提示信息"),
+					MB_ICONASTERISK | MB_OK);
+
+			}
+		}
+}
+
+
+void CVoltageVerificationDlg::OnBnClickedreadmoduleinfobutton()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	if (!pModbus || !m_serial->IsOpened())
+	{
+		MessageBox(_T("串口未打开"), _T("提示信息"),
+			MB_ICONEXCLAMATION | MB_OK);
+		return;
+	}
+
+
+	for (int i = 0; i < 3; i++)
+	{
+		Sleep(100);
+
+		unsigned char czData[16] = { '\0' };
+
+		if (pModbus->Read03Data(0xff, 40050, 4, czData))
+		{
+			int addr = 0, moduleName = 0, baud = 0;
+			addr = (int)pModbus->getUInt16(czData, 0);
+			moduleName = (int)pModbus->getUInt16(czData, 2);
+			baud = (int)pModbus->getUInt16(czData, 6);
+
+			nAddr = addr;
+
+			CString value;
+			value.Format(_T("%d"), addr);
+			GetDlgItem(addrLineEdit)->SetWindowTextW(value);
+
+			value.Format(_T("%d"), moduleName);
+			GetDlgItem(nameLineEdit)->SetWindowTextW(value);
+
+			switch (baud)
+			{
+			case 0:
+				GetDlgItem(moduleBtlLineEdit)->SetWindowTextW(_T("9600"));
+				break;
+			case 1:
+				GetDlgItem(moduleBtlLineEdit)->SetWindowTextW(_T("19200"));
+				break;
+			case 2:
+				GetDlgItem(moduleBtlLineEdit)->SetWindowTextW(_T("115200"));
+				break;
+			default:
+				break;
+			}
+
+			break;
+		}
+	}
+
+}
+
+
+void CVoltageVerificationDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == 1)
+	{
+
+		if (!pModbus || !m_serial->IsOpened())
+		{
+			MessageBox(_T("串口未打开"), _T("提示信息"),
+				MB_ICONEXCLAMATION | MB_OK);
+			return;
+		}
+
+		//OnBnClickedreadmoduleinfobutton();
+
+		unsigned char czData[16] = { '\0' };
+		if (pModbus->Read03Data(nAddr, 40052, 6, czData))
+		{
+			int powerStatus = 0; float adapterVoltage = 0.0, batteryVoltage = 0.0;
+			CString powerSupplier, chargeStatus, value;
+			powerStatus = (int)pModbus->getUInt16(czData, 0);
+			adapterVoltage = pModbus->getFloat(czData, 4);
+			batteryVoltage = pModbus->getFloat(czData, 8);
+
+			switch (powerStatus)
+			{
+			case 1:
+				powerSupplier.Format(_T("电池组"));
+				chargeStatus.Format(_T("放电"));
+				break;
+			case 2:
+				powerSupplier.Format(_T("适配器"));
+				chargeStatus.Format(_T("充满"));
+				break;
+			case 3:
+				powerSupplier.Format(_T("适配器"));
+				chargeStatus.Format(_T("充电"));
+				break;
+			default:
+				break;
+			}
+			GetDlgItem(powerStatusLineEdit)->SetWindowTextW(powerSupplier);
+			GetDlgItem(chargeStatusLineEdit)->SetWindowTextW(chargeStatus);
+
+			value.Format(_T("%f"), adapterVoltage);
+			GetDlgItem(adapterVoltageLineEdit)->SetWindowTextW(value);
+
+
+			value.Format(_T("%f"), batteryVoltage);
+			GetDlgItem(batteryVoltageLineEdit)->SetWindowTextW(value);
+
+		}
+	}
+
+
+}
+
+void CVoltageVerificationDlg::OnBnClickedStartVerify()
+{
+	clearVoltageData();
+
+	// 校准
+
+	if (!pModbus || !m_serial->IsOpened())
+	{
+		MessageBox(_T("串口未打开"), _T("提示信息"),
+			MB_ICONEXCLAMATION | MB_OK);
+		return;
+	}
+
+	unsigned char czData[2] = { '\0' };
+	unsigned short iCommand = 320;
+	memcpy(czData, &iCommand, 2);
+	unsigned char m_czData[2] = { '\0' };
+	m_czData[0] = czData[1];
+	m_czData[1] = czData[0];
+
+
+	for (int i = 0; i < 5; i++) //多几次确保发出
+	{
+		Sleep(100); //每次查询前需延时
+		if (pModbus->Write10Data(nAddr, 40001, 1, m_czData))
+		{
+			MessageBox(_T("校准命令已发出"), _T("提示信息"),
+				MB_ICONEXCLAMATION | MB_OK);
+			SetTimer(1, 500, NULL); // 继续刷新
+			break;
+		}
+	}
+}
+
+
+void CVoltageVerificationDlg::clearVoltageData()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	KillTimer(1);
+
+	GetDlgItem(powerStatusLineEdit)->SetWindowTextW(_T(""));
+	GetDlgItem(chargeStatusLineEdit)->SetWindowTextW(_T(""));
+
+	GetDlgItem(adapterVoltageLineEdit)->SetWindowTextW(_T(""));
+	GetDlgItem(batteryVoltageLineEdit)->SetWindowTextW(_T(""));
+
+	GetDlgItem(addrLineEdit)->SetWindowTextW(_T(""));
+	GetDlgItem(nameLineEdit)->SetWindowTextW(_T(""));
+	GetDlgItem(moduleBtlLineEdit)->SetWindowTextW(_T(""));
+
+}
+
+
+void CVoltageVerificationDlg::OnBnClickedsetmodbusaddrbutton()
+{
+	clearVoltageData();
+
+	if (!pModbus || !m_serial->IsOpened())
+	{
+		MessageBox(_T("串口未打开"), _T("提示信息"),
+			MB_ICONEXCLAMATION | MB_OK);
+		return;
+	}
+
+	unsigned char czData[2] = { '\0' };
+	unsigned char czDataValue[2] = { '\0' };
+
+	unsigned short iCommand = 1;
+	memcpy(czData, &iCommand, 2);
+
+	CString value;
+	GetDlgItem(addrLineEdit)->GetWindowTextW(value);
+	unsigned short iValue = (unsigned short)_tstoi(value);
+	memcpy(czDataValue, &iValue, 2);
+
+	unsigned char m_czData[4] = { '\0' };
+	m_czData[0] = czData[1];
+	m_czData[1] = czData[0];
+	m_czData[2] = czDataValue[1];
+	m_czData[3] = czDataValue[0];
+
+
+	for (int i = 0; i < 5; i++) //多几次确保发出
+	{
+		Sleep(100); //每次查询前需延时
+		if (pModbus->Write10Data(nAddr, 40001, 2, m_czData))
+		{
+			MessageBox(_T("地址设置成功"), _T("提示信息"),
+				MB_ICONEXCLAMATION | MB_OK);
+
+			OnBnClickedreadmoduleinfobutton();
+			SetTimer(1, 500, NULL); // 继续刷新
+			break;
+		}
+	}
+}
+
+
+void CVoltageVerificationDlg::OnBnClickedsetbaudbutton()
+{
+	clearVoltageData();
+
+	if (!pModbus || !m_serial->IsOpened())
+	{
+		MessageBox(_T("串口未打开"), _T("提示信息"),
+			MB_ICONEXCLAMATION | MB_OK);
+		return;
+	}
+
+	unsigned char czData[2] = { '\0' };
+	unsigned char czDataValue[2] = { '\0' };
+
+	unsigned short iCommand = 3;
+	memcpy(czData, &iCommand, 2);
+
+	CString value;
+	GetDlgItem(moduleBtlLineEdit)->GetWindowTextW(value);
+	int iValue = (unsigned short)_tstoi(value);
+	int baud = -1;
+	switch (iValue)
+	{
+	case 9600:
+		baud = 0;
+		break;
+	case 19200:
+		baud = 1;
+		break;
+	case 115200:
+		baud = 2;
+		break;
+	default:
+		MessageBox(_T("只能设置9600， 19200， 115200三个波特率"), _T("提示信息"),
+			MB_ICONEXCLAMATION | MB_OK);
+		return;
+		break;
+	}
+
+	memcpy(czDataValue, &baud, 2);
+
+	unsigned char m_czData[4] = { '\0' };
+	m_czData[0] = czData[1];
+	m_czData[1] = czData[0];
+	m_czData[2] = czDataValue[1];
+	m_czData[3] = czDataValue[0];
+
+
+	for (int i = 0; i < 5; i++) //多几次确保发出
+	{
+		Sleep(100); //每次查询前需延时
+		if (pModbus->Write10Data(nAddr, 40001, 2, m_czData))
+		{
+			MessageBox(_T("波特率设置成功，请等待模块重启"), _T("提示信息"),
+				MB_ICONEXCLAMATION | MB_OK);
+
+			OnBnClickedreadmoduleinfobutton();
+			SetTimer(1, 500, NULL); // 继续刷新
+			break;
+		}
+	}
 }

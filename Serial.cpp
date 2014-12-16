@@ -5,11 +5,11 @@
 
 CSerial::CSerial()
 { 
-	//m_Port = 0; 
-	//m_Baud = 9600; 
-	//m_ByteSize = 8;
-	//m_Parity = NOPARITY;
-	//m_StopBits = ONE5STOPBITS;
+	m_Port = 0; 
+	m_Baud = 9600; 
+	m_ByteSize = 8;
+	m_Parity = NOPARITY;
+	m_StopBits = ONE5STOPBITS;
 	::InitializeCriticalSection(&_Mutex);
 
 	memset( &m_OverlappedRead, 0, sizeof( OVERLAPPED ) );
@@ -39,12 +39,12 @@ BOOL CSerial::Open( int nPort, int nBaud ,DWORD dwByteSize, DWORD dwParity, DWOR
 
 	if( m_bOpened ) return( TRUE );
 
-	char szPort[16];
-	memset(szPort, 0, 16);
+	WCHAR szPort[15];
+	//char szComParams[50];
 	DCB dcb;
-	sprintf_s(szPort, "COM%d", nPort);
 
-	m_hIDComDev = CreateFile((LPCWSTR)szPort, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL );
+	wsprintf( szPort, L"\\\\.\\COM%d", nPort );
+	m_hIDComDev = CreateFile( szPort, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL );
 	if( m_hIDComDev == NULL ) return( FALSE );
 
 	memset( &m_OverlappedRead, 0, sizeof( OVERLAPPED ) );
@@ -58,6 +58,7 @@ BOOL CSerial::Open( int nPort, int nBaud ,DWORD dwByteSize, DWORD dwParity, DWOR
 	CommTimeOuts.WriteTotalTimeoutConstant = 5000;
 	SetCommTimeouts( m_hIDComDev, &CommTimeOuts );
 
+	//wsprintf( szComParams, "COM%d:%d,n,8,1", nPort, nBaud );
 
 	m_OverlappedRead.hEvent = CreateEvent( NULL, TRUE, FALSE, NULL );
 	m_OverlappedWrite.hEvent = CreateEvent( NULL, TRUE, FALSE, NULL );
@@ -68,6 +69,10 @@ BOOL CSerial::Open( int nPort, int nBaud ,DWORD dwByteSize, DWORD dwParity, DWOR
 	dcb.Parity = dwParity;
 	dcb.ByteSize = dwByteSize;
 	dcb.StopBits = dwStopBits;
+	/*unsigned char ucSet;
+	ucSet = (unsigned char) ( ( FC_RTSCTS & FC_DTRDSR ) != 0 );
+	ucSet = (unsigned char) ( ( FC_RTSCTS & FC_RTSCTS ) != 0 );
+	ucSet = (unsigned char) ( ( FC_RTSCTS & FC_XONXOFF ) != 0 );*/
 	if( !SetCommState( m_hIDComDev, &dcb ) ||
 		!SetupComm( m_hIDComDev, 10000, 10000 ) ||
 		m_OverlappedRead.hEvent == NULL ||
@@ -118,7 +123,7 @@ BOOL CSerial::WriteCommByte( unsigned char ucByte )
 
 }
 
-int CSerial::SendData(const unsigned char *buffer, int size)
+int CSerial::SendData( const unsigned char *buffer, int size )
 {
 
 	if( !m_bOpened || m_hIDComDev == NULL ) return( 0 );
@@ -205,3 +210,36 @@ void CSerial::ClearOutputBuffer()
 		::PurgeComm(m_hIDComDev, PURGE_TXABORT | PURGE_TXCLEAR );
 }
 
+int CSerial::ReadDataIOEvent(unsigned char *buffer, int limit)
+{
+	BOOL fSuccess = SetCommMask(m_hIDComDev, EV_RXCHAR);
+
+    if (!fSuccess) 
+    {
+        // Handle the error. 
+		CString str;
+		str.Format(L"SetCommMask failed with error %d.\n", GetLastError());
+		AfxMessageBox(str);
+        return 0;
+    }
+	m_OverlappedEvent.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	m_OverlappedEvent.Internal = 0;
+	m_OverlappedEvent.InternalHigh = 0;
+	m_OverlappedEvent.Offset = 0;
+	m_OverlappedEvent.OffsetHigh = 0;
+	ASSERT(m_OverlappedEvent.hEvent);
+
+	int WordsReaded;
+	while(m_bOpened)
+    {
+		if(WaitCommEvent(m_hIDComDev, &dwEventMask, &m_OverlappedEvent))
+		{
+			if (dwEventMask & EV_RXCHAR) 
+			{
+				WordsReaded = ReadData(buffer, limit);
+				break;
+			}
+		}
+	}
+	return WordsReaded;
+}

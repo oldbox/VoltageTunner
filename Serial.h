@@ -20,12 +20,13 @@ public:
 	CSerial();
 	~CSerial();
 
-	BOOL Open(int nPort, int nBaud, DWORD dwByteSize = 8, DWORD dwParity = NOPARITY, DWORD dwStopBits = ONESTOPBIT);
+	BOOL Open( int nPort, int nBaud = 115200 ,DWORD dwByteSize = 8, DWORD dwParity = NOPARITY, DWORD dwStopBits = ONESTOPBIT);
 	BOOL Close( void );
 
 	int ReadData( unsigned char *, int );
-	int SendData( const unsigned char *, int );
+	int SendData(const unsigned char *, int);
 	int ReadDataWaiting( void );
+	int ReadDataIOEvent(unsigned char*, int);
 
 	void ClearInputBuffer(void);
 	void ClearOutputBuffer(void);
@@ -44,8 +45,9 @@ protected:
 	BOOL WriteCommByte( unsigned char );
 
 	HANDLE m_hIDComDev;
-	OVERLAPPED m_OverlappedRead, m_OverlappedWrite;
+	OVERLAPPED m_OverlappedRead, m_OverlappedWrite, m_OverlappedEvent;
 	BOOL m_bOpened;
+	DWORD dwEventMask;
 
 private:
 	CRITICAL_SECTION _Mutex;

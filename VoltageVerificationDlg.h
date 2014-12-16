@@ -38,10 +38,19 @@ private:
 	CModbusSerial* pModbus;
 
 	void initView();
+
+	int nAddr;
 public:
 	afx_msg void OnBnClickedopenserialbutton();
 	CComboBox m_serialPortComb;
 	CComboBox m_serialBtlComb;
 	CButton m_openSerialButton;
 	CButton m_closeSerialButton;
+	afx_msg void OnBnClickedcloseserialbutton();
+	afx_msg void OnBnClickedreadmoduleinfobutton();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnBnClickedStartVerify();
+	void clearVoltageData();
+	afx_msg void OnBnClickedsetmodbusaddrbutton();
+	afx_msg void OnBnClickedsetbaudbutton();
 };

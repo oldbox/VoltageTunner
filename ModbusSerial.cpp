@@ -14,7 +14,7 @@ CModbusSerial::~CModbusSerial()
 {
 }
 
-bool CModbusSerial::Read03Data(int nFC, int nAddr, int nReg, int nCount, unsigned char *czData0304)
+bool CModbusSerial::Read03Data(int nAddr, int nReg, int nCount, unsigned char *czData0304, int nFC)
 {
 	if (!m_serial) return false;
 
@@ -137,12 +137,12 @@ bool CModbusSerial::Write10Data(int nAddr, int FisrtRegister, int Regs, unsigned
 	bool bRet = false;
 	int nFaild = 0;
 	int nLen = 0;
-
+	//13 10 00 00 00 01 02 01 40  72 90
 	if (9 + Regs * 2 == m_serial->SendData(pBuf, 9 + Regs * 2))
 	{
 		while (1)
 		{
-			int nRecv = m_serial->ReadData(czData + nLen, 1);
+			int nRecv = m_serial->ReadData(Data + nLen, 1);
 			if (nRecv > 0)
 			{
 				nLen += nRecv;
@@ -225,4 +225,35 @@ unsigned short CModbusSerial::CRC16(unsigned char *pBuf, int nLength)
 		}
 	}
 	return wReturn;
+}
+
+unsigned short CModbusSerial::getUInt16(unsigned char *czData, int startIndex)
+{
+	char pValue[2] = { '\0' };
+
+	pValue[0] = czData[1 + startIndex];
+	pValue[1] = czData[0 + startIndex];
+
+	unsigned short value = 0;
+	
+	memcpy(&value, pValue, 2);
+
+	return value;
+
+}
+
+float CModbusSerial::getFloat(unsigned char *czData, int startIndex)
+{
+	char pValue[4] = { '\0' };
+
+	pValue[0] = czData[1 + startIndex];
+	pValue[1] = czData[0 + startIndex];
+	pValue[2] = czData[3 + startIndex];
+	pValue[3] = czData[2 + startIndex];
+
+	float value = 0.0;
+
+	memcpy(&value, pValue, 4);
+
+	return value;
 }
