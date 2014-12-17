@@ -32,13 +32,13 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+	afx_msg void OnOK();
 
 private:
 	CSerial * m_serial;
 	CModbusSerial* pModbus;
 
 	void initView();
-
 	int nAddr;
 public:
 	afx_msg void OnBnClickedopenserialbutton();

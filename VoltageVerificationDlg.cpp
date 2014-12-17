@@ -401,16 +401,16 @@ void CVoltageVerificationDlg::clearVoltageData()
 	GetDlgItem(adapterVoltageLineEdit)->SetWindowTextW(_T(""));
 	GetDlgItem(batteryVoltageLineEdit)->SetWindowTextW(_T(""));
 
-	GetDlgItem(addrLineEdit)->SetWindowTextW(_T(""));
-	GetDlgItem(nameLineEdit)->SetWindowTextW(_T(""));
-	GetDlgItem(moduleBtlLineEdit)->SetWindowTextW(_T(""));
+	//GetDlgItem(addrLineEdit)->SetWindowTextW(_T(""));
+	//GetDlgItem(nameLineEdit)->SetWindowTextW(_T(""));
+	//GetDlgItem(moduleBtlLineEdit)->SetWindowTextW(_T(""));
 
 }
 
 
 void CVoltageVerificationDlg::OnBnClickedsetmodbusaddrbutton()
 {
-	clearVoltageData();
+	//clearVoltageData();
 
 	if (!pModbus || !m_serial->IsOpened())
 	{
@@ -427,6 +427,7 @@ void CVoltageVerificationDlg::OnBnClickedsetmodbusaddrbutton()
 
 	CString value;
 	m_addrLineEdit.GetWindowTextW(value);
+
 	unsigned short iValue = (unsigned short)_tstoi(value);
 	memcpy(czDataValue, &iValue, 2);
 
@@ -455,7 +456,7 @@ void CVoltageVerificationDlg::OnBnClickedsetmodbusaddrbutton()
 
 void CVoltageVerificationDlg::OnBnClickedsetbaudbutton()
 {
-	clearVoltageData();
+	//clearVoltageData();
 
 	if (!pModbus || !m_serial->IsOpened())
 	{
@@ -514,4 +515,10 @@ void CVoltageVerificationDlg::OnBnClickedsetbaudbutton()
 			break;
 		}
 	}
+}
+
+
+void CVoltageVerificationDlg::OnOK()
+{
+	return;
 }
